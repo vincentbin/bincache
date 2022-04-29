@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"main/eliminate"
+	"log"
 )
 
 type String string
@@ -11,18 +11,35 @@ func (s String) Len() int {
 	return len(s)
 }
 
+var db = map[string]string{
+	"Tom":  "630",
+	"Jack": "589",
+	"Sam":  "567",
+}
+
+
 func main() {
-	cache := eliminate.New(13, func(s string, v eliminate.Value) {
-		fmt.Println(v)
-	})
+	loadCounts := make(map[string]int, len(db))
+	gee := NewGroup("scores", 2<<10, GetterFunc(
+		func(key string) ([]byte, error) {
+			log.Println("[SlowDB] search key", key)
+			if v, ok := db[key]; ok {
+				if _, ok := loadCounts[key]; !ok {
+					loadCounts[key] = 0
+				}
+				loadCounts[key] += 1
+				return []byte(v), nil
+			}
+			return nil, fmt.Errorf("%s not exist", key)
+		}))
 
-	cache.Add("yyb0", String("123"))
-	cache.Add("yyb1", String("123"))
-	cache.Add("yyb2", String("123"))
-	cache.Add("yyb3", String("123"))
-	cache.Add("yyb4", String("123"))
+	for k, v := range db {
+		if view, err := gee.Get(k); err != nil || view.String() != v {
+			log.Fatalln("failed to get value of Tom")
+		} // load from callback function
 
-	_, ok := cache.Get("yyb4")
-	fmt.Println(ok)
-
+		if _, err := gee.Get(k); err != nil || loadCounts[k] > 1 {
+			log.Fatalf("cache %s miss\n", k)
+		} // cache hit
+	}
 }

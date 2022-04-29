@@ -1,8 +1,8 @@
-package eliminate
+package cache
 
 import "container/list"
 
-type Cache struct {
+type lru struct {
 	maxBytes int64
 	usedByte int64
 	list     *list.List
@@ -19,8 +19,8 @@ type entry struct {
 	value Value
 }
 
-func New(maxBytes int64, callBack func(string, Value)) *Cache {
-	return &Cache{
+func New(maxBytes int64, callBack func(string, Value)) *lru {
+	return &lru{
 		maxBytes:  maxBytes,
 		list:      list.New(),
 		cache:     make(map[string]*list.Element),
@@ -28,7 +28,7 @@ func New(maxBytes int64, callBack func(string, Value)) *Cache {
 	}
 }
 
-func (c *Cache) Get(key string) (value Value, ok bool) {
+func (c *lru) Get(key string) (value Value, ok bool) {
 	element, ok := c.cache[key]
 	if ok {
 		c.list.MoveToFront(element)
@@ -38,7 +38,7 @@ func (c *Cache) Get(key string) (value Value, ok bool) {
 	return
 }
 
-func (c *Cache) Add(key string, value Value) {
+func (c *lru) Set(key string, value Value) {
 	element, ok := c.cache[key]
 	if ok {
 		c.list.MoveToFront(element)
@@ -55,7 +55,7 @@ func (c *Cache) Add(key string, value Value) {
 	}
 }
 
-func (c *Cache) release() {
+func (c *lru) release() {
 	element := c.list.Back()
 	if element != nil {
 		c.list.Remove(element)
@@ -68,6 +68,6 @@ func (c *Cache) release() {
 	}
 }
 
-func (c *Cache) Len() int {
+func (c *lru) Len() int {
 	return c.list.Len()
 }
