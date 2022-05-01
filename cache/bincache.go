@@ -1,9 +1,8 @@
-package main
+package cache
 
 import (
 	"fmt"
 	"log"
-	"main/cache"
 	"sync"
 )
 
@@ -20,7 +19,7 @@ func (f GetterFunc) Get(key string) ([]byte, error) {
 type Group struct {
 	name      string
 	getter    Getter
-	mainCache cache.Cache
+	mainCache Cache
 }
 
 var (
@@ -37,7 +36,7 @@ func NewGroup(name string, cacheBytes int64, getter Getter) *Group {
 	g := &Group{
 		name:      name,
 		getter:    getter,
-		mainCache: cache.Cache{CacheBytes: cacheBytes},
+		mainCache: Cache{CacheBytes: cacheBytes},
 	}
 	groups[name] = g
 	return g
@@ -49,9 +48,9 @@ func GetGroup(name string) *Group {
 	return groups[name]
 }
 
-func (g *Group) Get(key string) (cache.ByteView, error) {
+func (g *Group) Get(key string) (ByteView, error) {
 	if key == "" {
-		return cache.ByteView{}, fmt.Errorf("key is required")
+		return ByteView{}, fmt.Errorf("key is required")
 	}
 	ret, ok := g.mainCache.Get(key)
 	if !ok {
@@ -61,16 +60,16 @@ func (g *Group) Get(key string) (cache.ByteView, error) {
 	return ret, nil
 }
 
-func (g *Group) load(key string) (value cache.ByteView, err error) {
+func (g *Group) load(key string) (value ByteView, err error) {
 	return g.getLocally(key)
 }
 
-func (g *Group) getLocally(key string) (cache.ByteView, error) {
+func (g *Group) getLocally(key string) (ByteView, error) {
 	bytes, err := g.getter.Get(key)
 	if err != nil {
-		return cache.ByteView{}, err
+		return ByteView{}, err
 	}
-	value := cache.ByteView{}
+	value := ByteView{}
 	value.B = value.CloneBytes(bytes)
 	g.mainCache.Set(key, value)
 	return value, nil
